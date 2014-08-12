@@ -1,20 +1,129 @@
-# Reproducible Research: Peer Assessment 1
+# PeerAssessment1
+====================================
+## Each code chunks naming format is question no. _ question name
+All figures are also exported to figures/ folder
+
+### This section loads the data we have used ggplot2 for plot in Q5
+shows current dataset top10 rows
+```{r Q1_loaddata}
+library("ggplot2")
+activity_frame<- read.csv("activity.csv",header=TRUE)
+```
+
+### Old Dataset data to view is available in PA1_old else uncomment this block
+```{r}
+#activity_frame
+```
 
 
-## Loading and preprocessing the data
+### This section calculates mean number of Steps
+```{r Q2_MeanNumberOfSteps}
+bad_frame <- complete.cases(activity_frame)
+Interval <-activity_frame[,3]
+Date <- activity_frame[,2]
+Steps <- activity_frame[,1]
+step_sum <- aggregate(Steps ~ Date,data=activity_frame[bad_frame,],FUN="sum")
+hist(step_sum$Steps,breaks=15,xlab="Total Steps per day",ylab="Frequency",main="Histogram of Steps per day")
+dev.copy(png,'figures/TotalStepsPerDay.png')
+dev.off()
+rug(step_sum$Steps)
+```
+
+Here We calculate mean and median
+```{r}
+mean(step_sum$Steps)
+median(step_sum$Steps)
+```
 
 
+### This section works on Daily Activity Pattern
+```{r Q3_AverageDailyActivityTypePattern}
+step_5min_avg <-aggregate(Steps ~ Interval,data=activity_frame[bad_frame,],FUN="mean")
+plot(step_5min_avg$Interval,step_5min_avg$Steps,type="l")
+dev.copy(png,'figures/step_5min_avg.png')
+dev.off()
+```
 
-## What is mean total number of steps taken per day?
+The interval where we have max average no. of steps
+```{r}
+step_5min_avg[which(max(step_5min_avg$Steps)==step_5min_avg$Steps),"Interval"]
+```
 
 
+### This section imputes missing values and perform calculations
 
-## What is the average daily activity pattern?
+#### In Question 4 to impute missing values we have replaced NA with mean of the interval i.e. If we say 0 interval so all the NAs at 0 interval have been replaced with mean of 0 interval
+
+head shows current dataset top10 rows for clarity 
+to see more data comment head line
+rug is used in histogram for clarity
+
+### No. of missing values
+```{r}
+length(which(bad_frame==FALSE))
+```
+
+```{r Q4_ImputingMissingValues}
+activity_var<-1
+while(activity_var < length(Steps))
+{
+  
+  if(bad_frame[activity_var]==FALSE)
+  {
+    activity_frame[activity_var,1] <- step_5min_avg[which(activity_frame[activity_var,3]==step_5min_avg$Interval),"Steps"]
+  }
+activity_var <- activity_var+1
+}
+head(activity_frame,n=10)
+bad_frame <- complete.cases(activity_frame)
+Interval <-activity_frame[,3]
+Date <- activity_frame[,2]
+Steps <- activity_frame[,1]
+step_sum <- aggregate(Steps ~ Date,data=activity_frame[bad_frame,],FUN="sum")
+hist(step_sum$Steps,breaks=15,xlab="Total Steps per day",ylab="Frequency",main="Histogram of Steps per day")
+dev.copy(png,'figures/AfterImputingTotalStepsPerDay.png')
+dev.off()
+rug(step_sum$Steps)
+```
 
 
+### New Dataset data to view is available in PA1_old else uncomment this block
+```{r}
+#activity_frame
+```
 
-## Imputing missing values
+#### Here we calculate mean and median of the newdataset after imputing missing values with mean of interval
+```{r}
+mean(step_sum$Steps)
+median(step_sum$Steps)
+```
 
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+### We Compare Activity in weekends and Weekdays over different intervals weekdays() function has been used here
+```{r Q5_ActivityPatternWeekendAndWeekdays}
+date_col <- weekdays(as.Date(activity_frame[,2]))
+head(activity_frame,n=5)
+activity_frame <- cbind(activity_frame,date_col)
+activity_var <- 1
+week_vector <- NA
+week_logic <- which(activity_frame[,"date_col"] %in% c("Saturday","Sunday"))
+while(activity_var < (length(Steps)+1))
+{
+  if(activity_var %in% week_logic)
+  {
+    week_vector <- c(week_vector,"weekend")
+  }
+  else {
+    week_vector <- c(week_vector,"weekday")
+  }
+activity_var <- activity_var+1
+}
+week_vector_na <- is.na(week_vector)
+week_vector <- week_vector[!week_vector_na]
+activity_frame <- cbind(activity_frame,week_vector)
+activity_frame$week_vector <- factor(activity_frame$week_vector)
+levels(activity_frame$week_vector)
+step_5min_avg <-aggregate(Steps ~ Interval + week_vector,data=activity_frame,FUN="mean")
+qplot(Interval,Steps,data=step_5min_avg,facets=week_vector~.,main="Average Steps Comparison at different intervals over Weekend and Weekdays")+geom_line()
+dev.copy(png,'figures/WeekdayWeekendComparison.png')
+dev.off()
+```
